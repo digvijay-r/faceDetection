@@ -19,6 +19,7 @@ const video = document.getElementById('video');
 function startVideo() {
     // Older browsers might not implement mediaDevices at all, so we set an empty object first
     if (navigator.mediaDevices === undefined) {
+        console.log("undefined 1")
         navigator.mediaDevices = {};
     }
 
@@ -26,6 +27,7 @@ function startVideo() {
     // with getUserMedia as it would overwrite existing properties.
     // Here, we will just add the getUserMedia property if it's missing.
     if (navigator.mediaDevices.getUserMedia === undefined) {
+        console.log("undefined");
         navigator.mediaDevices.getUserMedia = function (constraints) {
 
             // First get ahold of the legacy getUserMedia, if present
@@ -46,17 +48,15 @@ function startVideo() {
 
     navigator.mediaDevices.getUserMedia({ audio: false, video: true })
         .then(function (stream) {
-            var video = document.querySelector('video');
             // Older browsers may not have srcObject
             if ("srcObject" in video) {
+                console.log("src obj")
                 video.srcObject = stream;
             } else {
+                console.log(" not src obj")
                 // Avoid using this in new browsers, as it is going away.
                 video.src = window.URL.createObjectURL(stream);
             }
-            video.onloadedmetadata = function (e) {
-                video.play();
-            };
         })
         .catch(function (err) {
             console.log(err.name + ": " + err.message);
@@ -64,4 +64,25 @@ function startVideo() {
 
 }
 
-startVideo();
+
+Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+    faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
+    faceapi.nets.faceExpressionNet.loadFromUri('/models')
+]).then(startVideo());
+
+video.addEventListener('play', () => {
+    const canvas = faceapi.createCanvasFromMedia(video)
+    document.body.append(canvas)
+    const displaySize = { width: video.width, height: video.height }
+    faceapi.matchDimensions(canvas, displaySize)
+    setInterval(async () => {
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions()
+        const resizedDetections = faceapi.resizeResults(detections, displaySize)
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+        faceapi.draw.drawDetections(canvas, resizedDetections)
+        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections)
+        faceapi.draw.drawFaceExpressions(canvas, resizedDetections)
+    }, 100)
+})
