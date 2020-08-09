@@ -1,0 +1,14 @@
+{
+  "name": "facedetection",
+  "version": "1.0.0",
+  "description": "Face expression detection using face-api.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "Digvijay Rathore",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
